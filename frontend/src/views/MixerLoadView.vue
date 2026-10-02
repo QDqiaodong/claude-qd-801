@@ -48,6 +48,16 @@
             <div class="ml-foot">
               <span class="cp-tag" :class="statusClass(m.status)">{{ m.statusName }}</span>
               <span class="cp-muted">{{ m.orderCount }} 单</span>
+              <el-button
+                v-if="m.status === 'RUNNING' || m.status === 'IDLE'"
+                class="ml-fault-btn"
+                type="danger"
+                size="small"
+                plain
+                @click.stop="openFault(m)"
+              >
+                故障停机
+              </el-button>
             </div>
           </div>
         </div>
@@ -71,6 +81,16 @@
           <span class="cp-muted">当日计划方量</span>
           <el-input-number v-model="planVolume" :min="1" :step="10" size="small" />
           <el-button size="small" type="primary" @click="savePlan">保存</el-button>
+          <el-button
+            v-if="cur.status === 'RUNNING' || cur.status === 'IDLE'"
+            size="small"
+            type="danger"
+            plain
+            style="margin-left: auto"
+            @click="openFault(cur)"
+          >
+            临时故障停机
+          </el-button>
         </div>
 
         <div class="ml-sub">该主机任务单</div>
@@ -132,6 +152,9 @@
         </div>
       </div>
     </el-drawer>
+
+    <!-- 临时故障停机：预演 → 确认（整批原子） -->
+    <FaultDialog v-model="faultVisible" :mixer="faultMixer" @confirmed="onFaultConfirmed" />
   </div>
 </template>
 
@@ -139,6 +162,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, fmtDateTime } from '../api'
+import FaultDialog from './FaultDialog.vue'
 
 const board = ref([])
 const orders = ref([])
@@ -148,6 +172,10 @@ const planVolume = ref(10)
 const range = ref([])
 const grades = ['C25', 'C30', 'C35', 'C40']
 const slumps = ['120±30mm', '160±30mm', '180±30mm', '200±30mm']
+
+// 临时故障停机弹窗
+const faultVisible = ref(false)
+const faultMixer = ref({})
 
 const form = ref({
   projectName: '',
@@ -194,6 +222,21 @@ function openDrawer(m) {
   end.setHours(18, 0, 0, 0)
   range.value = [start, end]
   drawer.value = true
+}
+
+/** 临时故障停机：运行中/空闲主机才能发起 */
+function openFault(m) {
+  faultMixer.value = m
+  faultVisible.value = true
+}
+
+/** 确认成功后整页重取：主机负载竖条与任务归属都来自同一批最新数据 */
+async function onFaultConfirmed() {
+  await load()
+  const hit = board.value.find((m) => m.mixerId === cur.value.mixerId)
+  if (hit) cur.value = hit
+  window.dispatchEvent(new Event('plant-data-changed'))
+  ElMessage.success('主机负载与任务归属已刷新，请核对改派前后结果')
 }
 
 async function savePlan() {
@@ -395,6 +438,12 @@ onMounted(load)
   flex-direction: column;
   gap: 3px;
   align-items: center;
+}
+
+.ml-fault-btn {
+  margin-top: 4px;
+  font-size: 11px;
+  padding: 3px 10px;
 }
 
 .cp-legend {

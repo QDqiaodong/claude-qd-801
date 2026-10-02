@@ -48,6 +48,10 @@ export const api = {
   updateMixerPlan: (id, volume) => http.put(`/mixers/${id}/plan`, null, { params: { dailyPlanVolume: volume } }),
   updateMixerStatus: (id, status) => http.put(`/mixers/${id}/status`, null, { params: { status } }),
 
+  // 主机临时故障停机（预演只读；确认时后端重新核对并整批原子执行）
+  faultPreview: (data) => http.post('/mixer-faults/preview', data),
+  faultConfirm: (data) => http.post('/mixer-faults/confirm', data),
+
   // 生产任务单（聚合根）
   orders: (params) => http.get('/orders', { params }),
   orderDetail: (id) => http.get(`/orders/${id}`),

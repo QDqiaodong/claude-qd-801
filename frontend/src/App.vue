@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from './api'
 import MixerLoadView from './views/MixerLoadView.vue'
 import MixRatioView from './views/MixRatioView.vue'
@@ -115,5 +115,13 @@ async function loadDashboard() {
   }
 }
 
-onMounted(loadDashboard)
+onMounted(() => {
+  loadDashboard()
+  // 故障停机等整批处置完成后，后端已清看板缓存，这里同步刷新页头 KPI
+  window.addEventListener('plant-data-changed', loadDashboard)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('plant-data-changed', loadDashboard)
+})
 </script>

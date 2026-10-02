@@ -3,6 +3,7 @@
 SET NAMES utf8mb4;
 
 -- ========================= 建表 =========================
+DROP TABLE IF EXISTS mixer_fault_record;
 DROP TABLE IF EXISTS replenish_request;
 DROP TABLE IF EXISTS dispatch_ticket;
 DROP TABLE IF EXISTS mix_ratio_item;
@@ -38,6 +39,26 @@ CREATE TABLE mixer (
     KEY idx_mixer_plant (plant_id),
     CONSTRAINT fk_mixer_plant FOREIGN KEY (plant_id) REFERENCES mixing_plant (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='搅拌主机';
+
+-- 主机故障停机处置记录（确认时与「置故障 + 任务改派」同事务落库）
+CREATE TABLE mixer_fault_record (
+    id               BIGINT       NOT NULL AUTO_INCREMENT,
+    record_no        VARCHAR(32)  NOT NULL COMMENT '处置单号',
+    mixer_id         BIGINT       NOT NULL COMMENT '故障主机',
+    previous_status  VARCHAR(16)  NOT NULL COMMENT '停机前状态 RUNNING/IDLE',
+    fault_reason     VARCHAR(255) NOT NULL COMMENT '故障原因',
+    occurred_at      DATETIME     NOT NULL COMMENT '故障发生时间',
+    handled_at       DATETIME     NOT NULL COMMENT '处置确认时间',
+    affected_count   INT          NOT NULL COMMENT '受影响任务总数',
+    reassigned_count INT          NOT NULL COMMENT '实际改派任务数',
+    blocked_count    INT          NOT NULL COMMENT '不可改派任务数',
+    status           VARCHAR(16)  NOT NULL COMMENT 'CONFIRMED（失败批次整批回滚，不留记录）',
+    remark           VARCHAR(255) NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_fault_record_no (record_no),
+    KEY idx_fault_mixer (mixer_id),
+    CONSTRAINT fk_fault_mixer FOREIGN KEY (mixer_id) REFERENCES mixer (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='主机故障停机处置记录';
 
 -- 生产任务单（聚合根）
 CREATE TABLE production_order (

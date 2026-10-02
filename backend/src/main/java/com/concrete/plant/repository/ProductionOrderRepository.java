@@ -45,6 +45,10 @@ public interface ProductionOrderRepository extends JpaRepository<ProductionOrder
     List<ProductionOrder> findOverlapping(@Param("mixerId") Long mixerId, @Param("orderId") Long orderId,
                                           @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
+    @Query("select o from ProductionOrder o where o.mixer.id = :mixerId "
+            + "order by o.plannedStart asc, o.id asc")
+    List<ProductionOrder> findByMixer(@Param("mixerId") Long mixerId);
+
     @Query("select count(o) from ProductionOrder o where o.status = :status")
     long countByStatus(@Param("status") String status);
 }
