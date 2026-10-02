@@ -3,6 +3,8 @@
 SET NAMES utf8mb4;
 
 -- ========================= 建表 =========================
+DROP TABLE IF EXISTS fault_reassignment;
+DROP TABLE IF EXISTS fault_shutdown_record;
 DROP TABLE IF EXISTS replenish_request;
 DROP TABLE IF EXISTS dispatch_ticket;
 DROP TABLE IF EXISTS mix_ratio_item;
@@ -140,6 +142,41 @@ CREATE TABLE replenish_request (
     KEY idx_request_silo (silo_id),
     CONSTRAINT fk_request_silo FOREIGN KEY (silo_id) REFERENCES silo (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='补料申请';
+
+-- 主机临时故障停机处置记录
+CREATE TABLE fault_shutdown_record (
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    record_no     VARCHAR(32)  NOT NULL COMMENT '处置单号',
+    mixer_id      BIGINT       NOT NULL COMMENT '故障主机',
+    reason        VARCHAR(255) NOT NULL COMMENT '故障原因',
+    occurred_at   DATETIME     NOT NULL COMMENT '故障发生时间',
+    confirmed_at  DATETIME     NOT NULL COMMENT '确认处置时间',
+    operator_name VARCHAR(32)  NULL COMMENT '调度员',
+    status        VARCHAR(16)  NOT NULL COMMENT 'CONFIRMED',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_fault_record_no (record_no),
+    KEY idx_fault_mixer (mixer_id),
+    CONSTRAINT fk_fault_mixer FOREIGN KEY (mixer_id) REFERENCES mixer (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='主机临时故障停机处置记录';
+
+-- 故障任务改派明细
+CREATE TABLE fault_reassignment (
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+    record_id       BIGINT       NOT NULL COMMENT '故障处置单',
+    order_id        BIGINT       NOT NULL COMMENT '改派任务单',
+    source_mixer_id BIGINT       NOT NULL COMMENT '原主机',
+    target_mixer_id BIGINT       NOT NULL COMMENT '接替主机',
+    planned_start   DATETIME     NOT NULL COMMENT '原计划开始',
+    planned_end     DATETIME     NOT NULL COMMENT '原计划结束',
+    PRIMARY KEY (id),
+    KEY idx_fault_reassign_order (order_id),
+    KEY idx_fault_reassign_record (record_id),
+    KEY idx_fault_reassign_target (target_mixer_id),
+    CONSTRAINT fk_fault_reassign_record FOREIGN KEY (record_id) REFERENCES fault_shutdown_record (id),
+    CONSTRAINT fk_fault_reassign_order FOREIGN KEY (order_id) REFERENCES production_order (id),
+    CONSTRAINT fk_fault_reassign_source FOREIGN KEY (source_mixer_id) REFERENCES mixer (id),
+    CONSTRAINT fk_fault_reassign_target FOREIGN KEY (target_mixer_id) REFERENCES mixer (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='故障任务改派明细';
 
 -- ========================= 种子数据 =========================
 

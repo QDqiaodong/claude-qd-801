@@ -1,8 +1,12 @@
 package com.concrete.plant.repository;
 
 import java.util.List;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -13,6 +17,10 @@ public interface MixerRepository extends JpaRepository<Mixer, Long> {
 
     @Query("select m from Mixer m order by m.mixerCode")
     List<Mixer> findAllOrdered();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from Mixer m where m.id = :id")
+    Optional<Mixer> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * 主机产能负载：已完成方量取该主机名下所有发车单的装车方量，

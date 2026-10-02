@@ -71,6 +71,16 @@
           <span class="cp-muted">当日计划方量</span>
           <el-input-number v-model="planVolume" :min="1" :step="10" size="small" />
           <el-button size="small" type="primary" @click="savePlan">保存</el-button>
+          <el-button
+            size="small"
+            type="danger"
+            plain
+            style="margin-left: auto"
+            :disabled="cur.status !== 'RUNNING' && cur.status !== 'IDLE'"
+            @click="openFault"
+          >
+            临时故障停机
+          </el-button>
         </div>
 
         <div class="ml-sub">该主机任务单</div>
@@ -132,6 +142,8 @@
         </div>
       </div>
     </el-drawer>
+
+    <FaultShutdownDialog v-model="faultVisible" :mixer="cur" @confirmed="handleFaultConfirmed" />
   </div>
 </template>
 
@@ -139,10 +151,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, fmtDateTime } from '../api'
+import FaultShutdownDialog from './FaultShutdownDialog.vue'
 
 const board = ref([])
 const orders = ref([])
 const drawer = ref(false)
+const faultVisible = ref(false)
 const cur = ref({})
 const planVolume = ref(10)
 const range = ref([])
@@ -206,6 +220,16 @@ async function savePlan() {
   } catch (e) {
     ElMessage.error(e.message)
   }
+}
+
+function openFault() {
+  faultVisible.value = true
+}
+
+async function handleFaultConfirmed() {
+  await load()
+  const hit = board.value.find((m) => m.mixerId === cur.value.mixerId)
+  if (hit) cur.value = hit
 }
 
 async function submit() {

@@ -71,7 +71,7 @@ public class ProductionOrderService {
     @Transactional
     public OrderVO create(OrderRequest request) {
         validateBase(request);
-        Mixer mixer = requireMixer(request.getMixerId());
+        Mixer mixer = requireMixerForUpdate(request.getMixerId());
         checkMixerAvailable(mixer);
         checkOverlap(-1L, mixer, request.getPlannedStart(), request.getPlannedEnd());
 
@@ -88,12 +88,12 @@ public class ProductionOrderService {
 
     @Transactional
     public OrderVO update(Long id, OrderRequest request) {
-        ProductionOrder order = getOrder(id);
+        validateBase(request);
+        Mixer mixer = requireMixerForUpdate(request.getMixerId());
+        ProductionOrder order = getOrderForUpdate(id);
         if ("DONE".equals(order.getStatus())) {
             throw new BizException("已完成的任务单不允许修改");
         }
-        validateBase(request);
-        Mixer mixer = requireMixer(request.getMixerId());
         checkMixerAvailable(mixer);
         checkOverlap(id, mixer, request.getPlannedStart(), request.getPlannedEnd());
         applyBase(order, request);
@@ -108,7 +108,7 @@ public class ProductionOrderService {
      */
     @Transactional
     public OrderVO updateItems(Long id, List<ItemRequest> items) {
-        ProductionOrder order = getOrder(id);
+        ProductionOrder order = getOrderForUpdate(id);
         if ("DONE".equals(order.getStatus())) {
             throw new BizException("已完成的任务单不允许调整配合比");
         }
@@ -145,7 +145,7 @@ public class ProductionOrderService {
      */
     @Transactional
     public OrderVO start(Long id) {
-        ProductionOrder order = getOrder(id);
+        ProductionOrder order = getOrderForUpdate(id);
         if (!"PENDING".equals(order.getStatus())) {
             throw new BizException("只有「待排产」的任务单可以开工，当前状态："
                     + Dict.orderStatusName(order.getStatus()));
@@ -160,7 +160,7 @@ public class ProductionOrderService {
 
     @Transactional
     public OrderVO finish(Long id) {
-        ProductionOrder order = getOrder(id);
+        ProductionOrder order = getOrderForUpdate(id);
         if ("DONE".equals(order.getStatus())) {
             throw new BizException("任务单已完成，无需重复收尾");
         }
@@ -174,7 +174,7 @@ public class ProductionOrderService {
 
     @Transactional
     public void delete(Long id) {
-        ProductionOrder order = getOrder(id);
+        ProductionOrder order = getOrderForUpdate(id);
         if (!"PENDING".equals(order.getStatus())) {
             throw new BizException("只有「待排产」的任务单可以撤销");
         }
@@ -267,6 +267,11 @@ public class ProductionOrderService {
                 .orElseThrow(() -> new BizException("搅拌主机不存在：id=" + mixerId));
     }
 
+    private Mixer requireMixerForUpdate(Long mixerId) {
+        return mixerRepository.findByIdForUpdate(mixerId)
+                .orElseThrow(() -> new BizException("搅拌主机不存在：id=" + mixerId));
+    }
+
     private void checkMixerAvailable(Mixer mixer) {
         if (!"RUNNING".equals(mixer.getStatus()) && !"IDLE".equals(mixer.getStatus())) {
             throw new BizException("主机 " + mixer.getName() + " 当前状态为「" + Dict.mixerStatusName(mixer.getStatus())
@@ -305,6 +310,11 @@ public class ProductionOrderService {
 
     private ProductionOrder getOrder(Long id) {
         return orderRepository.findById(id).orElseThrow(() -> new BizException("生产任务单不存在：id=" + id));
+    }
+
+    private ProductionOrder getOrderForUpdate(Long id) {
+        return orderRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new BizException("生产任务单不存在：id=" + id));
     }
 
     private String nextOrderNo() {

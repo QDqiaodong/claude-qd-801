@@ -47,6 +47,8 @@ export const api = {
   mixerLoad: () => http.get('/mixers/load'),
   updateMixerPlan: (id, volume) => http.put(`/mixers/${id}/plan`, null, { params: { dailyPlanVolume: volume } }),
   updateMixerStatus: (id, status) => http.put(`/mixers/${id}/status`, null, { params: { status } }),
+  faultPreview: (data) => http.post('/fault-shutdown/preview', data),
+  faultConfirm: (data) => http.post('/fault-shutdown/confirm', data),
 
   // 生产任务单（聚合根）
   orders: (params) => http.get('/orders', { params }),

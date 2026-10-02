@@ -39,12 +39,15 @@
 - 实体与集合上标注 `@BatchSize(size = 50)` 抑制 N+1。
 - 手写 JPQL：`按强度等级统计方量`、`按工地汇总发货量`、`按日期查生产台账`、`主机产能负载`、`低库存筒仓`、`同主机时段重叠校验`。
 - 业务规则（抛 `BizException`）：同一主机时段不可重复排产、发车时罐车必须是「待命」、签收方量不得超过装车方量、开工前校验筒仓库存并给出具体缺料吨数。
+- 临时故障停机先由 `/api/fault-shutdown/preview` 只读预演：仅纳入待排产且无发车记录的任务；生产中、已完成或已有发车记录的任务逐项列明不可改派。确认时重新核对阶段、发车记录和接替主机排期，在单事务内置主机故障、保存处置记录并整批改派，任一冲突或条件变化全部回滚。
 
 ## 主要接口
 
 ```
 GET  /api/plants                     搅拌楼
 GET  /api/mixers/load                主机产能负载
+POST /api/fault-shutdown/preview     临时故障停机与改派预演（只读）
+POST /api/fault-shutdown/confirm     确认故障停机并整批改派（单事务）
 GET  /api/orders                     任务单列表
 POST /api/orders                     新建任务单
 PUT  /api/orders/{id}/items          调整配合比（重算水胶比）

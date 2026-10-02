@@ -4,7 +4,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,6 +21,13 @@ public interface ProductionOrderRepository extends JpaRepository<ProductionOrder
 
     @Query("select o from ProductionOrder o order by o.plannedStart desc, o.id desc")
     List<ProductionOrder> findAllOrdered();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from ProductionOrder o where o.id = :id")
+    Optional<ProductionOrder> findByIdForUpdate(@Param("id") Long id);
+
+    @Query("select o from ProductionOrder o where o.mixer.id = :mixerId order by o.plannedStart asc, o.id asc")
+    List<ProductionOrder> findByMixerId(@Param("mixerId") Long mixerId);
 
     /**
      * 手写 JPQL 一：按强度等级统计计划方量。
@@ -44,6 +54,14 @@ public interface ProductionOrderRepository extends JpaRepository<ProductionOrder
             + "and o.status <> 'DONE' and o.plannedStart < :end and o.plannedEnd > :start")
     List<ProductionOrder> findOverlapping(@Param("mixerId") Long mixerId, @Param("orderId") Long orderId,
                                           @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("select o from ProductionOrder o where o.mixer.id = :mixerId "
+            + "and o.plannedStart < :end and o.plannedEnd > :start "
+            + "and o.id not in :excludeOrderIds order by o.plannedStart asc, o.id asc")
+    List<ProductionOrder> findOverlappingExcluding(@Param("mixerId") Long mixerId,
+                                                   @Param("excludeOrderIds") List<Long> excludeOrderIds,
+                                                   @Param("start") LocalDateTime start,
+                                                   @Param("end") LocalDateTime end);
 
     @Query("select count(o) from ProductionOrder o where o.status = :status")
     long countByStatus(@Param("status") String status);

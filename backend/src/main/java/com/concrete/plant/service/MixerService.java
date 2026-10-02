@@ -73,7 +73,7 @@ public class MixerService {
 
     @Transactional
     public MixerLoadVO updatePlan(Long id, BigDecimal dailyPlanVolume) {
-        Mixer mixer = mixerRepository.findById(id).orElseThrow(() -> new BizException("搅拌主机不存在：id=" + id));
+        Mixer mixer = mixerRepository.findByIdForUpdate(id).orElseThrow(() -> new BizException("搅拌主机不存在：id=" + id));
         if (dailyPlanVolume == null || dailyPlanVolume.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BizException("当日计划方量必须大于 0");
         }
@@ -91,11 +91,14 @@ public class MixerService {
 
     @Transactional
     public Mixer updateStatus(Long id, String status) {
-        Mixer mixer = mixerRepository.findById(id).orElseThrow(() -> new BizException("搅拌主机不存在：id=" + id));
+        Mixer mixer = mixerRepository.findByIdForUpdate(id).orElseThrow(() -> new BizException("搅拌主机不存在：id=" + id));
         if (!Dict.isValidMixerStatus(status)) {
             throw new BizException("未知的主机运行状态：" + status);
         }
-        if ("FAULT".equals(status) || "MAINTENANCE".equals(status)) {
+        if ("FAULT".equals(status)) {
+            throw new BizException("故障停机必须通过「临时故障停机」流程完成任务预演与整批改派，不能只修改主机状态");
+        }
+        if ("MAINTENANCE".equals(status)) {
             long producing = mixerRepository.countProducing(id);
             if (producing > 0) {
                 throw new BizException("主机 " + mixer.getName() + " 尚有 " + producing + " 张生产中任务单，不能置为「"

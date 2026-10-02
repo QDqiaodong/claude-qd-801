@@ -76,7 +76,7 @@ public class DispatchService {
      */
     @Transactional
     public DispatchVO dispatch(DispatchCommand command) {
-        ProductionOrder order = orderRepository.findById(command.getOrderId())
+        ProductionOrder order = orderRepository.findByIdForUpdate(command.getOrderId())
                 .orElseThrow(() -> new BizException("生产任务单不存在：id=" + command.getOrderId()));
         if ("DONE".equals(order.getStatus())) {
             throw new BizException("任务单 " + order.getOrderNo() + " 已完成，不能再派车");
